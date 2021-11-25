@@ -14,6 +14,7 @@ Input: [[1,0,1],
 Output: 12
 """
 from typing import List
+from queue import SimpleQueue
 
 
 def compute_river_perimeter(map: List[List[int]]):
@@ -41,11 +42,35 @@ def compute_river_perimeter(map: List[List[int]]):
         else:
             return 0
 
+    def breadth_first_search(y: int, x: int) -> int:
+        q = SimpleQueue()
+        q.put((y, x))
+        perimeter = 0
+
+        while not q.empty():
+            y, x = q.get()
+            if (
+                y >= y_length
+                or x >= x_length
+                or y < 0
+                or x < 0
+                or map[y][x] == 0
+            ):
+                perimeter = perimeter + 1
+            elif map[y][x] == 1:
+                map[y][x] = 2
+                q.put((y + 1, x))
+                q.put((y - 1, x))
+                q.put((y, x + 1))
+                q.put((y, x - 1))
+
+        return perimeter
+
     # Find the first node
     for row in range(y_length):
         for col in range(x_length):
             if map[row][col] == 1:
-                result = depth_first_search(row, col)
+                result = breadth_first_search(row, col)
                 break
             break
     return result
@@ -56,4 +81,11 @@ if __name__ == '__main__':
     assert compute_river_perimeter([[1, 0]]) == 4, f"{compute_river_perimeter([[1, 0]])} is not equal to 4"
     assert compute_river_perimeter([[1, 0, 1],
                                     [1, 1, 1]]) == 12
+    assert compute_river_perimeter([[1, 0, 1, 0],
+                                    [1, 1, 1, 0],
+                                    [1, 1, 1, 0]]) == 14
+    assert compute_river_perimeter([[1, 0, 1, 0],
+                                    [1, 1, 1, 0],
+                                    [1, 0, 1, 0]]) == 16
+
     print("All test passed :))")
