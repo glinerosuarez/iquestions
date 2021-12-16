@@ -8,19 +8,19 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from enum import Enum
 from typing import Any, Tuple
 from dataclasses import dataclass
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
 
-df = pd.read_csv(
-    "https://raw.githubusercontent.com/erood/interviewqs.com_code_snippets/master/Datasets/teleco_user_data.csv"
-)
-df['Churn'] = df.Churn.apply(lambda x: 1 if x == 'Yes' else 0)
-
-
 class DecisionTree:
+
+    class Criterion(Enum):
+        GINI = "gini"
+        ENTROPY = "entropy"
+
     @dataclass
     class Decision:
         left: bool
@@ -31,7 +31,7 @@ class DecisionTree:
         feature: str
         index: int
         value: Any
-        gini: float
+        purity: float
         depth: int
         is_terminal: bool = False
         left: DecisionTree.Node = None
@@ -40,14 +40,15 @@ class DecisionTree:
 
     @dataclass
     class Split:
-        gini: float
+        purity: float
         feature: str
         index: int
         left_size: int
         right_size: int
         decision: DecisionTree.Decision = None
 
-    def __init__(self, max_depth: int, min_node_size: int):
+    def __init__(self, criterion: Criterion, max_depth: int, min_node_size: int):
+        self.criterion = criterion
         self.root_node = None
         self.max_depth = max_depth
         self.min_node_size = min_node_size
@@ -65,9 +66,19 @@ class DecisionTree:
         partition["Classes"] = dataset[labels]
         return partition[["Groups", "Classes"]].to_numpy()
 
-    @staticmethod
-    def _gini_index(data: np.ndarray) -> Tuple[float, int, int, int, int]:
-        def gini_for_leaf(node_data):
+    def _measure_purity(self, data: np.ndarray) -> Tuple[float, int, int, int, int]:
+        def _compute_entropy(node_data: np.ndarray) -> float:
+            if len(node_data):
+                y = node_data[:, 1]
+                p1 = len(node_data[y == 1]) / len(node_data)
+                p1logp1 = 0 if p1 == 0 else p1*np.log2(p1)
+                p2 = len(node_data[y == 0]) / len(node_data)
+                p2logp2 = 0 if p2 == 0 else p2*np.log2(p2)
+                return - (p1logp1 + p2logp2)
+            else:
+                return 0
+
+        def _compute_gini(node_data) -> float:
             if len(node_data):
                 y = node_data[:, 1]
                 return 1 - ((len(node_data[y == 1]) / len(node_data))**2 + (len(node_data[y == 0]) / len(node_data))**2)
@@ -80,38 +91,35 @@ class DecisionTree:
 
         group_1 = data[data[:, 0] == 1]
         group_2 = data[data[:, 0] == 0]
-        gini_1 = gini_for_leaf(group_1)
-        gini_2 = gini_for_leaf(group_2)
+        purity1 = _compute_gini(group_1) if self.criterion == DecisionTree.Criterion.GINI else _compute_entropy(group_1)
+        purity2 = _compute_gini(group_2) if self.criterion == DecisionTree.Criterion.GINI else _compute_entropy(group_2)
 
         ldecision = decision_for_leaf(group_1)
         rdecision = decision_for_leaf(group_2)
 
         len_group1 = len(group_1)
         len_group2 = len(group_2)
-        weighted_gini = gini_1 * len_group1 / len(data) + gini_2 * len_group2 / len(data)
+        weighted_purity = purity1 * len_group1 / len(data) + purity2 * len_group2 / len(data)
 
-        return weighted_gini, len_group1, len_group2, ldecision, rdecision
+        return weighted_purity, len_group1, len_group2, ldecision, rdecision
 
-    @staticmethod
-    def _find_split_point(records: pd.DataFrame, labels: str) -> Split:
-        best_gini = float("inf")
+    def _find_split_point(self, records: pd.DataFrame, labels: str) -> Split:
+        best_purity = float("inf")
         for feature in records.columns.drop(labels):
             for index in range(len(records)):
                 partition = DecisionTree._partition_by_feature(records, labels, feature, index)
-                gini, len_left, len_right, left_decision, right_decision = DecisionTree._gini_index(partition)
-                if gini < best_gini:
-                    # print("New best split found")
-                    # print(f"Feature: {feature} Value: {dataset[feature].iloc[index]} Index: {index} Gini score: {gini:0.5}")
+                purity, len_left, len_right, left_decision, right_decision = self._measure_purity(partition)
+                if purity < best_purity:
                     best_feature = feature
                     best_index = index
-                    best_gini = gini
+                    best_purity = purity
                     best_left_size = len_left
                     best_right_size = len_right
                     best_left_decision = left_decision
                     best_right_decision = right_decision
 
         return DecisionTree.Split(
-            gini=best_gini,
+            purity=best_purity,
             feature=best_feature,
             index=best_index,
             left_size=best_left_size,
@@ -136,7 +144,7 @@ class DecisionTree:
             feature=split.feature,
             index=split.index,
             value=dataset[split.feature].iloc[split.index],
-            gini=split.gini,
+            purity=split.purity,
             depth=parent_depth + 1,
             decision=split.decision
         ), is_parent_terminal
@@ -197,9 +205,10 @@ if __name__ == '__main__':
         test_size=0.20,
         random_state=42
     )
-    model = DecisionTree(max_depth=3, min_node_size=0)
+    model = DecisionTree(criterion=DecisionTree.Criterion.ENTROPY, max_depth=3, min_node_size=0)
     model.train(pd.concat([X_train, y_train], axis=1), "Churn")
 
     # Compute accuracy
     y_pred = model.predict(X_test)
-    print(f"Accuracy: {accuracy_score(y_test, y_pred):0.2%}")
+    print(f"Train accuracy: {accuracy_score(y_train, model.predict(X_train)):0.2%}")
+    print(f"Test accuracy: {accuracy_score(y_test, y_pred):0.2%}")
