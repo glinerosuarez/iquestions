@@ -35,5 +35,5 @@ def solution(a):
 
 
 if __name__ == '__main__':
-    #assert solution([0, -1, 2, -3, 1]) == [[1, 0, -1], [1, 2, -3]]
-    #assert solution([1, -2, 1, 0, 5]) == [[1, 1, -2]]
+    assert solution([0, -1, 2, -3, 1]) == [[1, 0, -1], [1, 2, -3]]
+    assert solution([1, -2, 1, 0, 5]) == [[1, 1, -2]]
