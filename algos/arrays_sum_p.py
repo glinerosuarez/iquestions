@@ -83,8 +83,7 @@ def hashmap_solution(a: list[int], k: int) -> int:
 
 
 if __name__ == '__main__':
-    #assert hashmap_solution([10, 2, -2, -20, 10], -10) == 3
-    #assert hashmap_solution([9, 4, 20, 3, 10, 5], 33) == 2
-    #assert hashmap_solution([1, 1, 1], 2) == 2
-    #assert hashmap_solution([3, 4, 7, 2, -3, 1, 4, 2], 7) == 4
-    assert brute_force_solution([1, 1, 3, 4], 6) == 1
+    assert hashmap_solution([10, 2, -2, -20, 10], -10) == 3
+    assert hashmap_solution([9, 4, 20, 3, 10, 5], 33) == 2
+    assert hashmap_solution([1, 1, 1], 2) == 2
+    assert hashmap_solution([3, 4, 7, 2, -3, 1, 4, 2], 7) == 4
