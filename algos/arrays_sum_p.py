@@ -21,6 +21,7 @@ def brute_force_solution(a: list[int], k: int) -> int:
 
     for start in range(0, n):
         for end in range(start + 1, n + 1):
+            print(a[start:end])
             if sum(a[start:end]) == k:
                 count += 1
 
