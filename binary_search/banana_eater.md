@@ -35,6 +35,5 @@ class Solution:
             elif hours >= lh:
                 l = mid + 1
             
-        return k
-        
+        return k        
 ```
